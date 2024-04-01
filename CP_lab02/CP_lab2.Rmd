@@ -1,0 +1,817 @@
+---
+title: "Computational Statistics Lab 2"
+author: "Simge Cinar & Ronald Yamashita"
+date: "2023-11-12"
+output:
+  pdf_document: 
+    latex_engine: xelatex
+    fig_width: 6
+    fig_height: 4
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = 'center')
+```
+
+# QUESTION 1: 
+### Part a)
+**Question:** *Derive the gradient and the Hessian matrix in dependence of x,y. Produce a contour plot of the function g.*\
+The function g(x,y) can be seen below. The aim is to determine the point $(x,y) \in [-3, 3]$ which maximizes the function g.
+$$
+g(x,y)= -x^2-x^2y^2-2xy+2x+2
+$$
+Its gradient matrix and hessian matrix are as follows:
+$$
+g'(x,y) = \begin{bmatrix}
+\frac{\partial f}{\partial x} \\
+\frac{\partial f}{\partial y}
+\end{bmatrix} = \begin{bmatrix}
+-2x-2xy^2-2y+2 \\
+-2x^2y-2x
+\end{bmatrix}
+$$
+
+$$
+g''(x,y) = \begin{bmatrix}
+\frac{\partial^2 f}{\partial x^2}&\frac{\partial^2 f}{\partial x\partial y} \\
+\frac{\partial^2 f}{\partial y\partial x}&\frac{\partial^2 f}{\partial y^2}
+\end{bmatrix} = \begin{bmatrix}
+-2-2y^2&-4xy-2 \\
+-4xy-2&-2x^2
+\end{bmatrix}
+$$
+
+
+```{r, echo=FALSE, fig.pos="H"}
+# Define the function, gradient and hessian matrix
+g <- function(x,y){
+  result_g <- -x^2 - x^2*y^2 - 2*x*y + 2*x + 2
+  return(result_g)
+}
+
+gradient_g <- function(x, y){
+  dx <- -2*x - 2*x*y^2 - 2*y + 2
+  dy <- -2*y*x^2 - 2*x
+  grad_mat <- matrix(c(dx, dy), ncol = 1)
+  return(grad_mat)
+}
+
+hessian_g <- function(x,y){
+  dxx <- -2 - 2*y^2
+  dyx <- -4*x*y -2
+  dxy <- -4*x*y -2
+  dyy <- -2*x^2
+  hessian_mat <- matrix(c(dxx,dyx,dxy,dyy), ncol = 2)
+  return(hessian_mat)
+}
+```
+
+Contour plot the function g can be seen below.
+```{r, echo=FALSE, fig.width=5, fig.height=4, fig.fullwidth=TRUE, fig.pos="H"}
+# Generate x and y values for the contour plot
+x_vals <- seq(-3, 3, length.out = 100)
+y_vals <- seq(-3, 3, length.out = 100)
+
+# Create a grid of x and y values
+grid <- expand.grid(x = x_vals, y = y_vals)
+
+# Evaluate the function g at each point in the grid
+grid$z <- apply(grid, 1, function(row) g(row[1], row[2]))
+
+# Create the contour plot
+contour(x = x_vals, y = y_vals, z = matrix(grid$z, nrow = length(x_vals), ncol = length(y_vals)), main = "Contour Plot")
+
+# Add labels and a color scale
+xlabel <- expression(x)
+ylabel <- expression(y)
+title(main = "Contour Plot", xlab = xlabel, ylab = ylabel)
+```
+
+### Part b)
+**Question:** *Write an own algorithm based on the Newton method in order to find a local maximum of g.* \
+Our algorithm can be seen below. Convergence criteria is chosen as $\lVert \mathbf{x^{(t)} -x^{(t+1)}} \rVert \leq  \epsilon$ and maximum number of iterations is defined to prevent infinite loops. In all of the experiments, we select $\epsilon = 10^{-10}$ and maximum iteration as 10,000
+```{r}
+newton_optimization <- function(x, y, eps, max_iter){
+  xt <- matrix(c(x,y), ncol= 1)
+  iter <- 0 
+  while (iter < max_iter){
+    hessian_mat <- hessian_g(xt[1,1],xt[2,1])
+    gradient_mat <- gradient_g(xt[1,1],xt[2,1])
+    xt1 <- xt - solve(hessian_mat) %*% gradient_mat 
+    # stopping condition 
+    if (dist(xt - xt1) <= eps){ 
+      break
+    }
+    xt <- xt1 
+    iter <- iter+1
+  }
+  newton_list = list(value = g(xt1[1], xt1[2]), 
+                     param = c(x = xt1[1], y = xt1[2]),
+                     iteration = iter)
+  return(newton_list)
+}
+```
+
+### Part c)
+**Question:** *Use different starting values: use the three points (x, y) = (2, 0), (−1, −2), (0, 1) and a fourth point of your choice. Describe what happens when you run your algorithm for each of those starting values. If your algorithm converges to points (x, y), compute the gradient and the Hessian matrix at these points and decide about local maximum, minimum, saddle point, or neither of it. Did you find a global maximum for $(x,y) \in [-3, 3]$?* \
+
+Newton's optimization method with four different starting values is applied to find the optimal points. The table with the corresponding values are as follows:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+  \hline
+  Initial Point & Optimal Value & Optimal Point & Iteration & Eigenvalues & Min/Max/Saddle \\
+  \hline
+  (2,0) & 4 & (1,-1) & 7 & (-0.763932, -5.236068) & Max  \\
+  (-1,-2) & 2 & (0,1) & 16 & (0.8284271, -4.828427) & Saddle \\
+  (0,1) & 2 & (0,1) & 0 & (0.8284271, -4.828427) & Saddle  \\
+  (0,0) & 2 & (0,1) & 1 &  (0.8284271, -4.828427) & Saddle  \\
+  \hline
+\end{tabular}
+\caption{Newton's Optimization Table}
+\end{table}
+
+$$
+g'(1,-1) = \begin{bmatrix}
+0 \\
+0
+\end{bmatrix} , g''(1,-1) =  \begin{bmatrix}
+-4&2 \\
+2&-2
+\end{bmatrix}
+$$
+$$
+g'(0,1) = \begin{bmatrix}
+0 \\
+0
+\end{bmatrix} , g''(0,1) =  \begin{bmatrix}
+-4&-2 \\
+-2&0
+\end{bmatrix}
+$$
+The corresponding gradient and hessian matrix with different converged points can be seen above. Point (1,-1) has a value of 4 and the eigenvalues of its hessian matrix is both negative. This shows that the point (1,-1) is local maximum. Point (0,1) gives the value 2. It is a saddle point since the eigenvalues of the hessian matrix has different signs. It should be noted that Newton’s optimization method is dependent on the initial point and does not guarantee optimality. Only initial point (2,0) converged to a local maximum point. Other initial points which are (−1, −2), (0, 1), (0,0) converged to a saddle point. \
+
+To find the global maximum a sequence is created in the interval [-3,3] for both x and y by increasing the value 0.01. The function g is calculated for each combination and the maximum value is found as 4 and at the point (1,-1). Moreover optim() function is used and it gives the same result. The corresponding code can be seen in the Appendix.
+
+### Part d)
+**Question:** *What would be the advantages and disadvantages when you would run a steepest ascent algorithm instead of the Newton algorithm?* \
+Newton’s method has quadratic convergence while gradient ascent has linear convergence therefore Newton’s method reaches the optimal solution in fewer iterations compared to gradient-based methods. Also gradient descent doesn’t give information about curvature of the surface.
+
+On the other hand, cost of computing Newton’s method is higher because we need to calculate the Hessian matrix. Consider the case we know both hessian matrix and gradient matrix of the function. We still need to calculate the inverse of the Hessian matrix for Newton’s method which has computational complexity $O(n^3)$ whereas gradient ascent has $O(n)$ computational complexity. Lastly, Newton does not guarantee that g increases in each step.
+
+# QUESTION 2:
+```{r, echo=FALSE}
+# DATA
+x <- c(0, 0, 0, 0.1, 0.1, 0.3, 0.3, 0.9, 0.9, 0.9)
+X <- cbind(1, as.matrix(x))
+y <- c(0, 0, 1, 0, 1, 1, 1, 0, 1, 1)
+beta <- matrix(c(-0.2, 1), ncol = 1)
+```
+
+```{r, echo=FALSE}
+#calculate prob for each x
+logistic_reg <- function(X, beta){ 
+  z <- X %*% beta
+  p <- 1/(1+exp(-z))
+  return(p)
+}
+
+#calculate loglikelihood with given data and parameter
+log_logistic_reg <- function(X, y, beta){ 
+  p <- logistic_reg(X, beta)
+  result <- sum(y*log(p) + (1-y)*log(1-p))
+  return(result)
+}
+
+# calculate gradient for both beta
+gradient <- function(X,y, beta){ 
+  diff <- y-logistic_reg(X, beta)
+  grad <- t(X) %*% as.matrix(diff) 
+  return(grad)
+}
+```
+
+```{r, echo=FALSE}
+# The gradient ascent function
+gradient_ascent <- function(alpha0, beta_init, eps, max_iter){
+  iter <- 0
+  alpha <- alpha0
+  beta_t <- beta_init
+  beta_t1 <- beta_t + alpha * gradient(X, y, beta_t)
+  g_t <- log_logistic_reg(X, y, beta_t)
+  gradient_t <- gradient(X, y, beta_t)
+  
+  loglikelihoods <- c(g_t)
+  eval_count <- 1  # Counter for function evaluations
+  grad_count <- 1  # Counter for gradient evaluations
+  
+  while (iter < max_iter) {
+    g_t1 <- log_logistic_reg(X, y, beta_t1)
+    eval_count <- eval_count + 1  # Increment function evaluation counter
+    
+    # find the stepsize that increases the loglikelihood
+    while (g_t1 < g_t){
+      alpha <- alpha/2
+      beta_t1 <- beta_t + alpha * gradient_t
+      g_t1 <- log_logistic_reg(X, y, beta_t1)
+      eval_count <- eval_count + 1  # Increment function evaluation counter
+      cat("Learning rate changed!\n")
+    }
+    
+    # assign beta_t1 and g_t1 as previous values
+    beta_t <- beta_t1
+    g_t <- g_t1
+    
+    # calculate new beta
+    gradient_t <- gradient(X, y, beta_t)
+    beta_t1 <- beta_t + alpha * gradient_t 
+    grad_count <- grad_count + 1  # Increment gradient evaluation counter
+    
+    # save values
+    loglikelihoods <- c(loglikelihoods, g_t1)
+    iter <- iter + 1
+    
+    # stopping condition
+    if (abs(beta_t[1] - beta_t1[1]) <= eps && abs(beta_t[2] - beta_t1[2]) <= eps){
+      break
+    }
+  } #end the loop
+  
+  result_list <- list(par = t(beta_t1),
+                      value = loglikelihoods[length(loglikelihoods)], 
+                      counts = c('function' = eval_count, 'gradient' = grad_count),
+                      iteration = iter)
+  return(result_list)  
+}
+```
+
+### part a)
+**Question:** *Write a function for an ML-estimator for $(\beta_0, \beta_1)$ using the steepest ascent method with a step-size reducing line search (back-tracking). For this, you can use and modify the code for the steepest ascent example from the lecture. The function should count the number of function and gradient evaluations.*\
+
+The aim of this question is find MLE for $\beta_0$ and $\beta_1$ using steepest ascent. The formula for steepest ascent is as follows:
+$$
+x^{(t+1)} = x^{(t)} + \alpha^{(t)}Ig'(x^{(t)})
+$$
+The ML-estimator function is as follows:
+```{r}
+# The gradient ascent function
+gradient_ascent <- function(alpha0, beta_init, eps, max_iter){
+  iter <- 0
+  alpha <- alpha0
+  beta_t <- beta_init
+  beta_t1 <- beta_t + alpha * gradient(X, y, beta_t)
+  g_t <- log_logistic_reg(X, y, beta_t)
+  gradient_t <- gradient(X, y, beta_t)
+  
+  loglikelihoods <- c(g_t)
+  eval_count <- 1  # Counter for function evaluations
+  grad_count <- 1  # Counter for gradient evaluations
+  
+  while (iter < max_iter) {
+    g_t1 <- log_logistic_reg(X, y, beta_t1)
+    eval_count <- eval_count + 1  # Increment function evaluation counter
+    
+    # find the stepsize that increases the loglikelihood
+    while (g_t1 < g_t){
+      alpha <- alpha/2
+      beta_t1 <- beta_t + alpha * gradient_t
+      g_t1 <- log_logistic_reg(X, y, beta_t1)
+      eval_count <- eval_count + 1  # Increment function evaluation counter
+      cat("Learning rate changed!\n")
+    }
+    
+    # assign beta_t1 and g_t1 as previous values
+    beta_t <- beta_t1
+    g_t <- g_t1
+    
+    # calculate new beta
+    gradient_t <- gradient(X, y, beta_t)
+    beta_t1 <- beta_t + alpha * gradient_t 
+    grad_count <- grad_count + 1  # Increment gradient evaluation counter
+    
+    # save values
+    loglikelihoods <- c(loglikelihoods, g_t1)
+    iter <- iter + 1
+    
+    # stopping condition
+    if (abs(beta_t[1] - beta_t1[1]) <= eps && abs(beta_t[2] - beta_t1[2]) <= eps){
+      break
+    }
+  } #end the loop
+  
+  result_list <- list(par = t(beta_t1),
+                      value = loglikelihoods[length(loglikelihoods)], 
+                      counts = c('function' = eval_count, 'gradient' = grad_count),
+                      iteration = iter)
+  return(result_list)  
+}
+```
+
+### part b)
+**Question:** *Compute the ML-estimator with the function from a for the data $(x_i,y_i)$ above. Use a stopping criterion such that you can trust five digits of both parameter estimates for $\beta_0$ and $\beta_1$. Use the starting value $(\beta_0,\beta_1) = (−0.2,1)$. The exact way to use backtracking can be varied. Try two variants and compare number of function and gradient evaluation done until convergence.* \
+
+Initial value of the $\alpha_0 = 1$ is selected and backtracking is used. $\alpha$ value changed 1 time. The value found is -6.484279 and parameters are $(\beta_0, \beta_1) = (-0.009339359, 1.262764)$. Function count is 58 and gradient count is 57.
+
+```{r, echo = FALSE}
+alpha0 <- 1 
+beta_init <- matrix(c(-0.2, 1), ncol= 1)
+eps <- 1e-5
+max_iter <- 10000
+result1 <- gradient_ascent(alpha0, beta_init, eps, max_iter)
+cat("Alpha:", alpha0, "\n")
+result1
+```
+
+Other initial $\alpha_0$ and beta values used as well. Let us start with $\alpha_0 = 10$. Stepsize ($\alpha$) changed 4 times. The value found is -6.484279 and parameters are $(\beta_0, \beta_1) = (-0.00934389, 1.262777)$. Function count is 50 and gradient count is 46. 
+```{r, echo = FALSE}
+alpha0 <- 10 
+beta_init <- matrix(c(-0.2, 1), ncol= 1)
+eps <- 1e-5
+max_iter <- 10000
+result2 <- gradient_ascent(alpha0, beta_init, eps, max_iter)
+cat("Alpha:", alpha0, "\n")
+result2
+```
+
+Lastly set $\alpha_0 = 3$ and also change the initial beta values to $(\beta_0, \beta_1) = (5, -5)$. The value found is -6.484279 and parameters are $(\beta_0, \beta_1) = (-0.009355319, 1.262825)$. Function count is 100 and gradient count is 98. Alpha value changed 2 times.
+```{r, echo = FALSE}
+alpha0 <- 3
+beta_init <- matrix(c(5, -5), ncol= 1)
+eps <- 1e-5
+max_iter <- 10000
+result3 <- gradient_ascent(alpha0, beta_init, eps, max_iter)
+cat("Alpha:", alpha0, "\n")
+result3
+```
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+  \hline
+  alpha &initial $(\beta_0, \beta_1)$ & optimal $(\beta_0, \beta_1)$ & value & function count & gradient count \\
+  \hline
+  $\alpha_0 = 1$ & (-0.2, 1) &(-0.009339359, 1.262764) & -6.484279 & 58 & 57 \\
+  \hline
+  $\alpha_0 = 10$ & (-0.2, 1) &(-0.00934389, 1.262777) &  -6.484279 & 50 & 46 \\
+  \hline
+  $\alpha_0 = 3$ & (5, -5) &(-0.009355319, 1.262825) & -6.484279 & 100 & 98 \\
+  \hline
+\end{tabular}
+\caption{Steepest Ascent Comparison}
+\end{table}
+
+### part c)
+**Question:** *Use now the function optim with both the BFGS and the Nelder-Mead algorithm. Do you obtain the same results compared with b.? Is there any difference in the precision of the result? Compare the number of function and gradient evaluations which are given in the standard output of optim.*
+
+```{r, echo=FALSE}
+# optim() function minimizes so I need to define new functions
+neg_log_likelihood <- function(X, y, beta) {
+  return(-log_logistic_reg(X, y, beta))
+}
+
+neg_gradient <- function(X, y, beta) {
+  return(-gradient(X, y, beta))  # We minimize the negative log-likelihood
+}
+```
+
+optim() function is used for minimization hence we defined negative logarithm of the function and negative derivate. BFGS and the Nelder-Mead algorithms were used.
+
+```{r, echo=FALSE}
+result_BFGS <- optim(par = as.vector(beta), fn = neg_log_likelihood, gr = neg_gradient, X = X, y = y, method = "BFGS")
+optimal_beta_BFGS <- matrix(result_BFGS$par, ncol = 1)
+
+cat("Optimal beta with BFGS:", optimal_beta_BFGS, "\n")
+cat("Likelihood:", log_logistic_reg(X, y, optimal_beta_BFGS), "\n") # The same result
+result_BFGS
+```
+
+```{r, echo=FALSE}
+result_NM <- optim(par = as.vector(beta), fn = neg_log_likelihood, gr = neg_gradient, X = X, y = y, method = "Nelder-Mead")
+optimal_beta_NM <- matrix(result_NM$par, ncol = 1)
+
+cat("Optimal beta with Nelder-Mead:", optimal_beta_NM, "\n")
+cat("Likelihood:", log_logistic_reg(X, y, optimal_beta_NM), "\n") # The same result
+result_NM
+```
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|c|}
+  \hline
+  Method & function count & gradient count & parameters & value  \\
+  \hline
+  BFGS & 12 & 8 & (-0.009356126, 1.262812832) & -6.484279\\
+  \hline
+  Nelder-Mead & 47 & NA & (-0.009423433, 1.262738) & -6.484279 \\
+  \hline
+\end{tabular}
+\caption{Comparison of BFGS and Nelder-Mead}
+\end{table}
+
+Both of the method give the same value and almost same parameters with part b. Nelder-Mead doesn't have the gradient count. Since it doesn't use gradient information, the Nelder-Mead method may require more function evaluations to converge, especially in high-dimensional spaces. Function count of the BFGS method is less than Nelder-Mead because it incorporates information about the local curvature of the objective function. Both method has less function & gradient (BFGS) count compared to part b.
+
+### part d)
+**Question:** *Use the function glm in R to obtain an ML-solution and compare it with your results before.* \
+Summary of the logistic regression with glm() function is as follows:
+```{r}
+data <- data.frame(x = x, y = y)
+model <- glm(y ~ x, data = data, family = "binomial")
+cat("Optimal beta with glm():", model$coefficients, "\n")
+cat("Likelihood:", log_logistic_reg(X, y, model$coefficients), "\n") 
+```
+
+glm() fucntion gives the same loglikelihood value with Nelder-Mead, BFGS and part b.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|}
+  \hline
+  Method & Parameters & Value & Accuracy  \\
+  \hline
+  Steepest Ascent ($\alpha_0 = 1$), $(\beta_0, \beta_1) = (-0.2,1)$ & (-0.009339359, 1.262764) & -6.484279 & 0.7  \\
+  \hline
+  Steepest Ascent ($\alpha_0 = 10$), $(\beta_0, \beta_1) = (-0.2,1)$ & (-0.00934389, 1.262777) &-6.484279 & 0.7  \\
+  \hline
+  Steepest Ascent ($\alpha_0 = 3$), $(\beta_0, \beta_1) = (5,-5)$ & (-0.009355319, 1.262825) & -6.484279 & 0.7  \\
+  \hline
+  BFGS & (-0.009356126, 1.262812832) & -6.484279 & 0.7  \\
+  \hline
+  Nelder-Mead & (-0.009423433, 1.262738266) & -6.484279 & 0.7  \\
+  \hline
+  glm() & (-0.009359853, 1.262823430) & -6.484279 & 0.7  \\
+  \hline
+\end{tabular}
+\caption{Comparison of the Methods}
+\end{table}
+
+The parameters of all the methods is almost same and they all yield to same accuracy in the model. Accuracy is calculated putting the obtained beta values to p(x). The code for the calculation can be seen in the Appendix.
+
+
+\newpage
+# Appendix
+## QUESTION 1:
+
+### part a) 
+```{r}
+# Define the function, gradient and hessian matrix
+g <- function(x,y){
+  result_g <- -x^2 - x^2*y^2 - 2*x*y + 2*x + 2
+  return(result_g)
+}
+
+gradient_g <- function(x, y){
+  dx <- -2*x - 2*x*y^2 - 2*y + 2
+  dy <- -2*y*x^2 - 2*x
+  grad_mat <- matrix(c(dx, dy), ncol = 1)
+  return(grad_mat)
+}
+
+hessian_g <- function(x,y){
+  dxx <- -2 - 2*y^2
+  dyx <- -4*x*y -2
+  dxy <- -4*x*y -2
+  dyy <- -2*x^2
+  hessian_mat <- matrix(c(dxx,dyx,dxy,dyy), ncol = 2)
+  return(hessian_mat)
+}
+```
+
+```{r, fig.width=5, fig.height=4, fig.fullwidth=TRUE, fig.pos="H"}
+# Generate x and y values for the contour plot
+x_vals <- seq(-3, 3, length.out = 100)
+y_vals <- seq(-3, 3, length.out = 100)
+
+# Create a grid of x and y values
+grid <- expand.grid(x = x_vals, y = y_vals)
+
+# Evaluate the function g at each point in the grid
+grid$z <- apply(grid, 1, function(row) g(row[1], row[2]))
+
+# Create the contour plot
+contour(x = x_vals, y = y_vals, z = matrix(grid$z, nrow = length(x_vals), ncol = length(y_vals)), main = "Contour Plot")
+
+# Add labels and a color scale
+xlabel <- expression(x)
+ylabel <- expression(y)
+title(main = "Contour Plot", xlab = xlabel, ylab = ylabel)
+```
+
+### part b) 
+```{r}
+newton_optimization <- function(x, y, eps, max_iter){
+  xt <- matrix(c(x,y), ncol= 1)
+  iter <- 0 
+  while (iter < max_iter){
+    hessian_mat <- hessian_g(xt[1,1],xt[2,1])
+    gradient_mat <- gradient_g(xt[1,1],xt[2,1])
+    xt1 <- xt - solve(hessian_mat) %*% gradient_mat 
+    # stopping condition 
+    if (dist(xt- xt1) <= eps ){ 
+      break
+    }
+    xt <- xt1 
+    iter <- iter+1
+  }
+  newton_list = list(value = g(xt1[1], xt1[2]), 
+                     param = c(x = xt1[1], y = xt1[2]),
+                     iteration = iter)
+  return(newton_list)
+}
+```
+
+### part c) 
+```{r}
+cat("Starting value is (x,y) = (2,0):\n")
+x <- 2
+y <- 0
+fnc <- newton_optimization(x, y, eps = 1e-10, max_iter = 10000)
+x_new <- fnc$param[1]
+y_new <- fnc$param[2]
+cat("Newton Optimization Result:\n")
+fnc
+cat("Gradient matrix:\n")
+gradient_g(x_new,y_new)
+cat("Hessian matrix:\n")
+hessian_g(x_new,y_new)
+cat("Eigenvalues:\n", eigen(hessian_g(x_new,y_new))$values, "\n") 
+```
+
+```{r}
+cat("Starting value is (x,y) = (-1,-2):\n")
+x <- -1
+y <- -2
+fnc <- newton_optimization(x, y, eps = 1e-10, max_iter = 10000)
+x_new <- fnc$param[1]
+y_new <- fnc$param[2]
+cat("Newton Optimization Result:\n")
+fnc
+cat("Gradient matrix:\n")
+gradient_g(x_new,y_new)
+cat("Hessian matrix:\n")
+hessian_g(x_new,y_new)
+cat("Eigenvalues:\n", eigen(hessian_g(x_new,y_new))$values, "\n") 
+```
+
+```{r}
+cat("Starting value is (x,y) = (0,1):\n")
+x <- 0
+y <- 1
+fnc <- newton_optimization(x, y, eps = 1e-10, max_iter = 10000)
+x_new <- fnc$param[1]
+y_new <- fnc$param[2]
+cat("Newton Optimization Result:\n")
+fnc
+cat("Gradient matrix:\n")
+gradient_g(x_new,y_new)
+cat("Hessian matrix:\n")
+hessian_g(x_new,y_new)
+cat("Eigenvalues:\n", eigen(hessian_g(x_new,y_new))$values, "\n") 
+```
+
+```{r}
+cat("Starting value is (x,y) = (0,0):\n")
+x <- 0
+y <- 0
+fnc <- newton_optimization(x, y, eps = 1e-10, max_iter = 10000)
+x_new <- fnc$param[1]
+y_new <- fnc$param[2]
+cat("Newton Optimization Result:\n")
+fnc
+cat("Gradient matrix:\n")
+gradient_g(x_new,y_new)
+cat("Hessian matrix:\n")
+hessian_g(x_new,y_new)
+cat("Eigenvalues:\n", eigen(hessian_g(x_new,y_new))$values, "\n") 
+```
+
+```{r}
+x_values <- seq(-3, 3, by = 0.01)
+y_values <- seq(-3, 3, by = 0.01)
+
+# Create a data frame with all combinations of x and y
+combinations <- expand.grid(x = x_values, y = y_values)
+
+# Calculate the corresponding g values for each combination
+combinations$g_values <- mapply(g, combinations$x, combinations$y)
+
+max_row <- combinations[which.max(combinations$g_values), ]
+cat("Maximum point (x, y):", max_row$x, max_row$y, "\n")
+cat("Maximum value:", max_row$g_values, "\n")
+```
+
+```{r}
+g_optimize <- function(init){
+  x <- init[1]
+  y <- init[2]
+  result_g <- -x^2 - x^2*y^2 - 2*x*y + 2*x + 2
+  return(-result_g)
+}
+initial_values <- c(2,0)
+max_val <- optim(par = initial_values, fn = g_optimize, method = "L-BFGS-B", lower = c(-3, -3), upper = c(3, 3))
+cat("Maximum point (x,y):", max_val$par, "\n")
+cat("Maximum value:", -max_val$value, "\n")
+```
+
+## QUESTION 2:
+
+```{r}
+# DATA
+x <- c(0, 0, 0, 0.1, 0.1, 0.3, 0.3, 0.9, 0.9, 0.9)
+X <- cbind(1, as.matrix(x))
+y <- c(0, 0, 1, 0, 1, 1, 1, 0, 1, 1)
+beta <- matrix(c(-0.2, 1), ncol = 1)
+```
+
+```{r}
+#calculate prob for each x
+logistic_reg <- function(X, beta){ 
+  z <- X %*% beta
+  p <- 1/(1+exp(-z))
+  return(p)
+}
+
+#calculate loglikelihood with given data and parameter
+log_logistic_reg <- function(X, y, beta){ 
+  p <- logistic_reg(X, beta)
+  result <- sum(y*log(p) + (1-y)*log(1-p))
+  return(result)
+}
+
+# calculate gradient for both beta
+gradient <- function(X,y, beta){ 
+  diff <- y-logistic_reg(X, beta)
+  grad <- t(X) %*% as.matrix(diff) 
+  return(grad)
+}
+```
+
+### part a,b)
+
+```{r}
+# The gradient ascent function
+gradient_ascent <- function(alpha0, beta_init, eps, max_iter){
+  iter <- 0
+  alpha <- alpha0
+  beta_t <- beta_init
+  beta_t1 <- beta_t + alpha * gradient(X, y, beta_t)
+  g_t <- log_logistic_reg(X, y, beta_t)
+  gradient_t <- gradient(X, y, beta_t)
+  
+  loglikelihoods <- c(g_t)
+  eval_count <- 1  # Counter for function evaluations
+  grad_count <- 1  # Counter for gradient evaluations
+  
+  while (iter < max_iter) {
+    g_t1 <- log_logistic_reg(X, y, beta_t1)
+    eval_count <- eval_count + 1  # Increment function evaluation counter
+    
+    # find the stepsize that increases the loglikelihood
+    while (g_t1 < g_t){
+      alpha <- alpha/2
+      beta_t1 <- beta_t + alpha * gradient_t
+      g_t1 <- log_logistic_reg(X, y, beta_t1)
+      eval_count <- eval_count + 1  # Increment function evaluation counter
+      cat("Learning rate changed!\n")
+    }
+    
+    # assign beta_t1 and g_t1 as previous values
+    beta_t <- beta_t1
+    g_t <- g_t1
+    
+    # calculate new beta
+    gradient_t <- gradient(X, y, beta_t)
+    beta_t1 <- beta_t + alpha * gradient_t 
+    grad_count <- grad_count + 1  # Increment gradient evaluation counter
+    
+    # save values
+    loglikelihoods <- c(loglikelihoods, g_t1)
+    iter <- iter + 1
+    
+    # stopping condition
+    if (abs(beta_t[1] - beta_t1[1]) <= eps && abs(beta_t[2] - beta_t1[2]) <= eps){
+      break
+    }
+  } #end the loop
+  
+  result_list <- list(par = t(beta_t1),
+                      value = loglikelihoods[length(loglikelihoods)], 
+                      counts = c('function' = eval_count, 'gradient' = grad_count),
+                      iteration = iter)
+  return(result_list)  
+}
+```
+
+```{r}
+alpha0 <- 1 
+beta_init <- matrix(c(-0.2, 1), ncol= 1)
+eps <- 1e-5
+max_iter <- 10000
+result1 <- gradient_ascent(alpha0, beta_init, eps, max_iter)
+cat("Alpha:", alpha0, "\n")
+result1
+```
+
+```{r}
+alpha0 <- 10 
+beta_init <- matrix(c(-0.2, 1), ncol= 1)
+eps <- 1e-5
+max_iter <- 10000
+result2 <- gradient_ascent(alpha0, beta_init, eps, max_iter)
+cat("Alpha:", alpha0, "\n")
+result2
+```
+
+```{r}
+alpha0 <- 3
+beta_init <- matrix(c(5, -5), ncol= 1)
+eps <- 1e-5
+max_iter <- 10000
+result3 <- gradient_ascent(alpha0, beta_init, eps, max_iter)
+cat("Alpha:", alpha0, "\n")
+result3
+```
+
+### part c)
+```{r}
+# optim() function minimizes so I need to define new functions
+neg_log_likelihood <- function(X, y, beta) {
+  return(-log_logistic_reg(X, y, beta))
+}
+
+neg_gradient <- function(X, y, beta) {
+  return(-gradient(X, y, beta))  # We minimize the negative log-likelihood
+}
+```
+
+```{r}
+result_BFGS <- optim(par = as.vector(beta), fn = neg_log_likelihood, gr = neg_gradient, X = X, y = y, method = "BFGS")
+optimal_beta_BFGS <- matrix(result_BFGS$par, ncol = 1)
+
+cat("Optimal beta with BFGS:", optimal_beta_BFGS, "\n")
+cat("Likelihood:", log_logistic_reg(X, y, optimal_beta_BFGS), "\n") # The same result
+result_BFGS
+```
+
+```{r}
+result_NM <- optim(par = as.vector(beta), fn = neg_log_likelihood, gr = neg_gradient, X = X, y = y, method = "Nelder-Mead")
+optimal_beta_NM <- matrix(result_NM$par, ncol = 1)
+
+cat("Optimal beta with Nelder-Mead:", optimal_beta_NM, "\n")
+cat("Likelihood:", log_logistic_reg(X, y, optimal_beta_NM), "\n") # The same result
+result_NM
+```
+
+### part d)
+
+```{r}
+data <- data.frame(x = x, y = y)
+model <- glm(y ~ x, data = data, family = "binomial")
+summary(model)
+cat("Coefficients:", model$coefficients, "\n")
+cat("Value:", log_logistic_reg(X, y, model$coefficients), "\n")
+```
+
+```{r}
+accuracy <- function(x,y, beta_MLE){
+  X <- cbind(1, as.matrix(x))
+  beta_new <- matrix(c(beta_MLE[1], beta_MLE[2]), ncol = 1)
+  probs <- logistic_reg(X, beta_new)
+  pred <- c()
+  for (i in 1:10){
+    if (probs[i] > 0.5){
+      pred <- c(pred, 1)
+    } else{
+      pred <- c(pred, 0)
+    }
+  }
+  acc <- mean(pred == y)
+  result_accuracy <- list(pred = pred, accuracy = acc)
+  return(result_accuracy)
+}
+```
+
+```{r}
+accuracy(x,y, result1$par)
+```
+
+```{r}
+accuracy(x,y, result2$par)
+```
+
+```{r}
+accuracy(x,y, result3$par)
+```
+
+```{r}
+accuracy(x,y, result_BFGS$par)
+```
+
+```{r}
+accuracy(x,y, result_NM$par)
+```
+
+```{r}
+accuracy(x,y, model$coefficients)
+```
+
